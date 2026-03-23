@@ -1,0 +1,46 @@
+<!DOCTYPE html><html><head><title>RoadWorld — Living Metaverse</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>*{margin:0}body{background:#000;overflow:hidden}#hud{position:fixed;top:16px;left:16px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#525252;z-index:10}#hud div{margin-bottom:4px}</style></head>
+<body><div id="hud"><div>RoadWorld v0.1</div><div id="fps">0 fps</div><div id="pos">0, 0, 0</div><div style="margin-top:8px;color:#333">WASD move · Mouse look · Click to lock</div></div>
+<script>
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x050508);scene.fog=new THREE.FogExp2(0x050508,0.02);
+const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.1,500);cam.position.set(0,3,20);
+const ren=new THREE.WebGLRenderer({antialias:true});ren.setSize(innerWidth,innerHeight);ren.shadowMap.enabled=true;document.body.appendChild(ren.domElement);
+// Ground
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,200,50,50),new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:0.9}));
+ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+// Grid
+const grid=new THREE.GridHelper(200,100,0x1a1a1a,0x111111);scene.add(grid);
+// Buildings (BlackRoad HQ)
+const bmat=new THREE.MeshStandardMaterial({color:0x131313});
+for(let i=0;i<20;i++){const h=2+Math.random()*8;const b=new THREE.Mesh(new THREE.BoxGeometry(2+Math.random()*3,h,2+Math.random()*3),bmat);
+b.position.set((Math.random()-0.5)*80,h/2,(Math.random()-0.5)*80);b.castShadow=true;scene.add(b);}
+// NPCs (agent markers)
+const agents=[{n:"alice",c:0xa3a3a3,x:5,z:5},{n:"lucidia",c:0x737373,x:-8,z:3},{n:"meridian",c:0x525252,x:12,z:-7},{n:"cadence",c:0x404040,x:-3,z:-10},{n:"eve",c:0x333333,x:8,z:12}];
+agents.forEach(a=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,1.8,8),new THREE.MeshStandardMaterial({color:a.c,emissive:a.c,emissiveIntensity:0.3}));
+m.position.set(a.x,0.9,a.z);scene.add(m);
+const ring=new THREE.Mesh(new THREE.RingGeometry(0.5,0.6,16),new THREE.MeshBasicMaterial({color:a.c,side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.set(a.x,0.01,a.z);scene.add(ring);});
+// Lights
+const sun=new THREE.DirectionalLight(0xffffff,0.3);sun.position.set(20,30,10);sun.castShadow=true;scene.add(sun);
+scene.add(new THREE.AmbientLight(0x404060,0.2));
+const colors=[0xFF6B2B,0xFF2255,0xCC00AA,0x8844FF,0x4488FF,0x00D4FF];
+colors.forEach((c,i)=>{const l=new THREE.PointLight(c,0.5,15);l.position.set(Math.cos(i)*10,2,Math.sin(i)*10);scene.add(l);});
+// Controls
+const keys={};let yaw=0,pitch=0;
+document.addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
+document.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+document.addEventListener("mousemove",e=>{if(document.pointerLockElement){yaw-=e.movementX*0.002;pitch=Math.max(-1.2,Math.min(1.2,pitch-e.movementY*0.002))}});
+ren.domElement.addEventListener("click",()=>ren.domElement.requestPointerLock());
+let frames=0,lastFps=performance.now();
+function animate(){requestAnimationFrame(animate);
+const s=0.12;const d=new THREE.Vector3();
+if(keys.w)d.z-=s;if(keys.s)d.z+=s;if(keys.a)d.x-=s;if(keys.d)d.x+=s;
+d.applyAxisAngle(new THREE.Vector3(0,1,0),yaw);cam.position.add(d);cam.position.y=3;
+cam.rotation.order="YXZ";cam.rotation.y=yaw;cam.rotation.x=pitch;
+// Animate NPCs
+agents.forEach((a,i)=>{const t=performance.now()*0.001;scene.children.forEach(c=>{if(c.position&&Math.abs(c.position.x-a.x)<0.5&&c.type==="Mesh"&&c.geometry.type==="CylinderGeometry"){c.position.x=a.x+Math.sin(t+i)*2;c.position.z=a.z+Math.cos(t+i)*2}})});
+ren.render(scene,cam);
+frames++;if(performance.now()-lastFps>1000){document.getElementById("fps").textContent=frames+" fps";frames=0;lastFps=performance.now();}
+document.getElementById("pos").textContent=cam.position.x.toFixed(0)+", "+cam.position.y.toFixed(0)+", "+cam.position.z.toFixed(0);}
+animate();addEventListener("resize",()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();ren.setSize(innerWidth,innerHeight)});
+</script></body></html>
